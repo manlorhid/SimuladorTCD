@@ -1,33 +1,73 @@
 breed [cars car]
 
 cars-own[velocidad aceleracion]
+
+to setupCars[nCars]
+ ca
+ create-cars nCars
+ ask patches with [pycor = 0 OR (pycor < 10 AND pycor > -10)][
+   set pcolor grey
+ ]
+ ;ask patches with [pycor = 0 AND (pxcor mod 2) = 0][set pcolor white]
+ ask cars [
+   set size 5
+   setxy  (min-pxcor + 2) 0
+   set shape "car"
+   set heading 90
+   fd 10 * who
+ ]
+end
+
+to startDriving
+  ask cars[
+   fd 1
+  ]
+  reset-ticks
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 685
-140
-1122
-578
+135
+1095
+546
 -1
 -1
-13.0
+2.0
 1
 10
 1
 1
 1
 0
-0
+1
 0
 1
--16
-16
--16
-16
+-100
+100
+-100
+100
 0
 0
 1
 ticks
 30.0
+
+BUTTON
+280
+305
+372
+338
+NIL
+startDriving
+T
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
