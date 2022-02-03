@@ -1,4 +1,6 @@
 breed [cars car]
+
+cars-own[velocidad]
 @#$#@#$#@
 GRAPHICS-WINDOW
 685
