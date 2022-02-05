@@ -6,33 +6,41 @@ to setupCars[nCars]
  ca
  create-cars nCars
  ask patches with [pycor = 0 OR (pycor < 10 AND pycor > -10)][
-   set pcolor grey
+   set pcolor green
  ]
- ;ask patches with [pycor = 0 AND (pxcor mod 2) = 0][set pcolor white]
+ ask patches with [pycor = 0 AND (pxcor mod 2) = 0][set pcolor red]
  ask cars [
    set size 5
+   set velocidad 10
+   set aceleracion 1
    setxy  (min-pxcor + 2) 0
    set shape "car"
    set heading 90
-   fd 10 * who
+   fd velocidad * who
  ]
 end
 
 to startDriving
   ask cars[
-   fd 1
+    show xcor
+    fd velocidad
+    let cX xcor
+    let vCar velocidad
+    let p patches with [pycor = 0 AND (pxcor > cX AND pxcor <= cX + vCar + 2)]
+    show xcor
+    ;show one-of cars-on p
   ]
   reset-ticks
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-685
-135
-1095
-546
+235
+10
+1033
+809
 -1
 -1
-2.0
+1.9701
 1
 10
 1
@@ -42,10 +50,10 @@ GRAPHICS-WINDOW
 1
 0
 1
--100
-100
--100
-100
+-200
+200
+-200
+200
 0
 0
 1
@@ -53,10 +61,10 @@ ticks
 30.0
 
 BUTTON
-280
-305
-372
-338
+5
+100
+97
+133
 NIL
 startDriving
 T
@@ -68,6 +76,38 @@ NIL
 NIL
 NIL
 1
+
+BUTTON
+5
+10
+157
+43
+NIL
+setupCars nCarsSetup\n\n
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+SLIDER
+5
+50
+177
+83
+nCarsSetup
+nCarsSetup
+0
+100
+14.0
+1
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
