@@ -12,15 +12,48 @@ to setupCars[nCars]
  ask cars [
    set size 5
    set velocidad 10
-   set aceleracion 1
+   ;set aceleracion 1
    setxy  (min-pxcor + 2) 0
    set shape "car"
    set heading 90
    fd velocidad * who
+   ;separate-cars
  ]
 end
 
+;He añadido el siguiente método porque la creación de los coches dependen del set de velocidad.
+;Hay que darle una vuelta ya que únicamente funciona cuando la velocidad es 0. El problema es que
+;habría ahora mismo que modificar primero que la creación de coches no se haga por velocidades y
+;lo segundo, modificar la siguiente función para que no sólo separe los coches del mismo patch, sino
+;del patch del coche y los 5 siguientes.
+;
+;Otra opción es cambiar y que la inicialización de los cars se hagan en cierto sitio, independientemente de la velocidad
+;y luego hacer un método que les impida chocarse. Para ello, se pueden crear todos en un mismo patch y utilizar la función
+;siguiente para separarlos.
+to separate-cars
+  if any? other turtles-here [
+    fd 10
+    separate-cars
+  ]
+end
+
+;Intentando lo del otro día con lo siguiente puedes ver (con ticks muy pequeños) que no se mueven
+;si tienen al de delante a menos de los patch que se indica en la inicialización de la variable
+;car-ahead, lo que no se es en qué medida podría ser una solución si la velocidad y acelaración van cambiando.
+
+;Si calculamos la distancia con el de delante (no se si hay un método para ello) podemos añadirselo en el lugar de "velocidad" en el let.
+
 to startDriving
+  ask cars[
+    let car-ahead one-of turtles-on patch-ahead velocidad
+    ifelse car-ahead != nobody
+      [  ]
+      [ fd velocidad  ]
+  ]
+  reset-ticks
+end
+
+to startDriving2
   ask cars[
     show xcor
     fd velocidad
@@ -103,7 +136,7 @@ nCarsSetup
 nCarsSetup
 0
 100
-14.0
+10.0
 1
 1
 NIL
