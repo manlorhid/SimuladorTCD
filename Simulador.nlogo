@@ -11,7 +11,7 @@ to setupCars[nCars]
  ask patches with [pycor = 0 AND (pxcor mod 2) = 0][set pcolor red]
  ask cars [
    set size 5
-   set velocidad 1;(random 10) + 1
+   set velocidad (random 10) + 1
    ;set aceleracion 1
    setxy  (min-pxcor + 2) 0
    set shape "car"
@@ -34,18 +34,11 @@ to startDriving
     if (xCar + vCar) > max-pxcor [
       set xCar min-pxcor
     ]
-    let car-ahead one-of cars-on patches with [pycor = 0 AND (pxcor > xCar AND pxcor <= xCar + vCar + 5)]
+    let car-ahead one-of cars-on cars with [ycor = 0 AND (xcor > xCar AND xcor <= xCar + vCar + 5)]
     if car-ahead = nobody
-      [fd 1]
+      [fd velocidad]
   ]
   reset-ticks
-end
-
-to startDriving2
-ask cars[
-    let car-ahead patches with [pxcor > 0 AND pxcor <= 1]
-    fd 1
-]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
