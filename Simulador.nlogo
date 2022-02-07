@@ -11,59 +11,41 @@ to setupCars[nCars]
  ask patches with [pycor = 0 AND (pxcor mod 2) = 0][set pcolor red]
  ask cars [
    set size 5
-   set velocidad 10
+   set velocidad 1;(random 10) + 1
    ;set aceleracion 1
    setxy  (min-pxcor + 2) 0
    set shape "car"
    set heading 90
-   fd velocidad * who
-   ;separate-cars
+   initial-separate-cars
  ]
 end
 
-;He añadido el siguiente método porque la creación de los coches dependen del set de velocidad.
-;Hay que darle una vuelta ya que únicamente funciona cuando la velocidad es 0. El problema es que
-;habría ahora mismo que modificar primero que la creación de coches no se haga por velocidades y
-;lo segundo, modificar la siguiente función para que no sólo separe los coches del mismo patch, sino
-;del patch del coche y los 5 siguientes.
-;
-;Otra opción es cambiar y que la inicialización de los cars se hagan en cierto sitio, independientemente de la velocidad
-;y luego hacer un método que les impida chocarse. Para ello, se pueden crear todos en un mismo patch y utilizar la función
-;siguiente para separarlos.
-to separate-cars
+to initial-separate-cars
   if any? other turtles-here [
     fd 10
-    separate-cars
+    initial-separate-cars
   ]
 end
 
-;Intentando lo del otro día con lo siguiente puedes ver (con ticks muy pequeños) que no se mueven
-;si tienen al de delante a menos de los patch que se indica en la inicialización de la variable
-;car-ahead, lo que no se es en qué medida podría ser una solución si la velocidad y acelaración van cambiando.
-
-;Si calculamos la distancia con el de delante (no se si hay un método para ello) podemos añadirselo en el lugar de "velocidad" en el let.
-
 to startDriving
   ask cars[
-    let car-ahead one-of turtles-on patch-ahead velocidad
-    ifelse car-ahead != nobody
-      [  ]
-      [ fd velocidad  ]
+    let xCar xcor
+    let vCar velocidad
+    if (xCar + vCar) > max-pxcor [
+      set xCar min-pxcor
+    ]
+    let car-ahead one-of cars-on patches with [pycor = 0 AND (pxcor > xCar AND pxcor <= xCar + vCar + 5)]
+    if car-ahead = nobody
+      [fd 1]
   ]
   reset-ticks
 end
 
 to startDriving2
-  ask cars[
-    show xcor
-    fd velocidad
-    let cX xcor
-    let vCar velocidad
-    let p patches with [pycor = 0 AND (pxcor > cX AND pxcor <= cX + vCar + 2)]
-    show xcor
-    ;show one-of cars-on p
-  ]
-  reset-ticks
+ask cars[
+    let car-ahead patches with [pxcor > 0 AND pxcor <= 1]
+    fd 1
+]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -136,11 +118,28 @@ nCarsSetup
 nCarsSetup
 0
 100
-10.0
+20.0
 1
 1
 NIL
 HORIZONTAL
+
+BUTTON
+75
+167
+177
+201
+NIL
+startDriving2
+T
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
