@@ -1,8 +1,12 @@
 breed [cars car]
 
-cars-own[velocidad aceleracion]
+cars-own[velocity accel max-velocity]
 
-to setupCars[nCars]
+;;1 segundo = 1 tick
+;;1m = 0.0033^ puntos
+;;10km/h = 2.77^ m/s
+;;120km/h = 33.33^ puntos/tick
+to setup-cars[nCars]
  ca
  create-cars nCars
  ask patches with [pycor = 0 OR (pycor < 10 AND pycor > -10)][
@@ -11,13 +15,15 @@ to setupCars[nCars]
  ask patches with [pycor = 0 AND (pxcor mod 2) = 0][set pcolor red]
  ask cars [
    set size 5
-   set velocidad (random 10) + 1
-   ;set aceleracion 1
+   set velocity (random 14) + 1;;m/s
+   set max-velocity 33.33;;m/s
+   set accel 1
    setxy  (min-pxcor + 2) 0
    set shape "car"
    set heading 90
    initial-separate-cars
  ]
+ reset-ticks
 end
 
 to initial-separate-cars
@@ -27,18 +33,30 @@ to initial-separate-cars
   ]
 end
 
-to startDriving
+to start-driving
   ask cars[
     let xCar xcor
-    let vCar velocidad
-    if (xCar + vCar) > max-pxcor [
+    let dCar velocity
+    if (xCar + dCar) > max-pxcor [
+      set dCar dCar - (max-pxcor - xCar)
       set xCar min-pxcor
     ]
-    let car-ahead one-of cars-on cars with [ycor = 0 AND (xcor > xCar AND xcor <= xCar + vCar + 5)]
+    let car-ahead one-of cars with [ycor = 0 AND (xcor > xCar AND xcor <= xCar + dCar + 5)]
     if car-ahead = nobody
-      [fd velocidad]
+      [
+        calculate-velocity
+        fd 0.003333333333 * velocity
+    ]
   ]
-  reset-ticks
+  tick
+end
+
+to calculate-velocity
+  let next-velocity velocity + accel
+  show next-velocity
+  if next-velocity < max-velocity[
+    set velocity next-velocity
+  ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -66,15 +84,15 @@ GRAPHICS-WINDOW
 0
 1
 ticks
-30.0
+60.0
 
 BUTTON
 5
 100
-97
-133
+103
+134
 NIL
-startDriving
+start-driving
 T
 1
 T
@@ -88,10 +106,10 @@ NIL
 BUTTON
 5
 10
-157
-43
+161
+44
 NIL
-setupCars nCarsSetup\n\n
+setup-cars nCarsSetup\n\n
 NIL
 1
 T
@@ -111,28 +129,11 @@ nCarsSetup
 nCarsSetup
 0
 100
-20.0
+1.0
 1
 1
 NIL
 HORIZONTAL
-
-BUTTON
-75
-167
-177
-201
-NIL
-startDriving2
-T
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
 
 @#$#@#$#@
 ## WHAT IS IT?
