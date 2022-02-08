@@ -1,6 +1,6 @@
 breed [cars car]
-
-cars-own[velocity accel max-velocity]
+globals[world-scale]
+cars-own[velocity max-velocity accel security-distance]
 
 ;;1 segundo = 1 tick
 ;;1m = 0.0033^ puntos
@@ -8,6 +8,7 @@ cars-own[velocity accel max-velocity]
 ;;120km/h = 33.33^ puntos/tick
 to setup-cars[nCars]
  ca
+ set world-scale 0.003333333333
  create-cars nCars
  ask patches with [pycor = 0 OR (pycor < 10 AND pycor > -10)][
    set pcolor green
@@ -17,7 +18,8 @@ to setup-cars[nCars]
    set size 5
    set velocity (random 14) + 1;;m/s
    set max-velocity 33.33;;m/s
-   set accel 1
+   set accel (random 3) + 1;;m/s
+   set security-distance 50 ;;m
    setxy  (min-pxcor + 2) 0
    set shape "car"
    set heading 90
@@ -35,17 +37,18 @@ end
 
 to start-driving
   ask cars[
+    calculate-security-distance
     let xCar xcor
-    let dCar velocity
+    let dCar security-distance * world-scale
     if (xCar + dCar) > max-pxcor [
-      set dCar dCar - (max-pxcor - xCar)
+      set dCar dCar - max-pxcor - xCar
       set xCar min-pxcor
     ]
     let car-ahead one-of cars with [ycor = 0 AND (xcor > xCar AND xcor <= xCar + dCar + 5)]
     if car-ahead = nobody
       [
         calculate-velocity
-        fd 0.003333333333 * velocity
+        fd world-scale * velocity
     ]
   ]
   tick
@@ -53,10 +56,16 @@ end
 
 to calculate-velocity
   let next-velocity velocity + accel
-  show next-velocity
-  if next-velocity < max-velocity[
+  ifelse next-velocity < max-velocity[
     set velocity next-velocity
+  ][
+    set velocity max-velocity
   ]
+end
+
+to calculate-security-distance
+  set security-distance velocity * 3
+
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -129,7 +138,7 @@ nCarsSetup
 nCarsSetup
 0
 100
-1.0
+10.0
 1
 1
 NIL
@@ -477,7 +486,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.2.2
+NetLogo 6.2.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
