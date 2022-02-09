@@ -1,23 +1,24 @@
 breed [cars car]
-globals[world-scale]
+globals[world-scale select-car]
 cars-own[velocity max-velocity accel security-distance]
 
 ;;1 segundo = 1 tick
-;;1m = 0.0033^ puntos
+;;1m = 0.0033^ puntos (120km carretera), 1m = 12.5 puntos (5km carretera) OBSOLETO
 ;;10km/h = 2.77^ m/s
 ;;120km/h = 33.33^ puntos/tick
 to setup-cars[nCars]
  ca
- set world-scale 0.003333333333
+ set select-car one-of cars
+ set world-scale 1 ;; 1m = 1 patch, 1m = 1 patch
  create-cars nCars
  ask patches with [pycor = 0 OR (pycor < 10 AND pycor > -10)][
-   set pcolor green
+   set pcolor grey
  ]
- ask patches with [pycor = 0 AND (pxcor mod 2) = 0][set pcolor red]
+ ask patches with [pycor = 0 AND (pxcor mod 2) = 0][set pcolor white]
  ask cars [
-   set size 3
+   set size 1 * 4
    set velocity (random 14) + 1;;m/s
-   set max-velocity 120;;m/s
+   set max-velocity 33.33333;;m/s
    set accel (random 3) + 1;;m/s
    set security-distance 50 ;;m
    setxy  (min-pxcor + 2) 0
@@ -66,10 +67,11 @@ to accelerate
 end
 
 to brake
-  ifelse velocity - accel < 0[
+  let next-velocity velocity - accel
+  ifelse next-velocity < 0[
     set velocity 0
   ][
-   set velocity velocity - accel
+   set velocity next-velocity
   ]
 end
 
@@ -93,13 +95,13 @@ to resume-car-n [n]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-235
-10
-1033
-809
+0
+170
+25013
+384
 -1
 -1
-1.9701
+5.0
 1
 10
 1
@@ -107,12 +109,12 @@ GRAPHICS-WINDOW
 1
 0
 1
-0
 1
--200
-200
--200
-200
+1
+-2500
+2500
+-20
+20
 0
 0
 1
@@ -162,11 +164,28 @@ nCarsSetup
 nCarsSetup
 0
 100
-25.0
+2.0
 1
 1
 NIL
 HORIZONTAL
+
+BUTTON
+135
+395
+342
+428
+ride-car
+ride (car 0)
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -510,7 +529,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.1.1
+NetLogo 6.2.2
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
