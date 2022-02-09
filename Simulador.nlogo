@@ -15,9 +15,9 @@ to setup-cars[nCars]
  ]
  ask patches with [pycor = 0 AND (pxcor mod 2) = 0][set pcolor red]
  ask cars [
-   set size 5
+   set size 3
    set velocity (random 14) + 1;;m/s
-   set max-velocity 33.33;;m/s
+   set max-velocity 120;;m/s
    set accel (random 3) + 1;;m/s
    set security-distance 50 ;;m
    setxy  (min-pxcor + 2) 0
@@ -30,7 +30,7 @@ end
 
 to initial-separate-cars
   if any? other turtles-here [
-    fd 10
+    fd 4
     initial-separate-cars
   ]
 end
@@ -44,17 +44,19 @@ to start-driving
       set dCar dCar - max-pxcor - xCar
       set xCar min-pxcor
     ]
-    let car-ahead one-of cars with [ycor = 0 AND (xcor > xCar AND xcor <= xCar + dCar + 5)]
-    if car-ahead = nobody
+    let car-ahead one-of cars with [ycor = 0 AND (xcor > xCar AND xcor <= xCar + dCar + 4)]
+    ifelse car-ahead = nobody
       [
-        calculate-velocity
-        fd world-scale * velocity
+        accelerate
+    ][
+        brake
     ]
+    fd world-scale * velocity
   ]
   tick
 end
 
-to calculate-velocity
+to accelerate
   let next-velocity velocity + accel
   ifelse next-velocity < max-velocity[
     set velocity next-velocity
@@ -63,9 +65,31 @@ to calculate-velocity
   ]
 end
 
+to brake
+  ifelse velocity - accel < 0[
+    set velocity 0
+  ][
+   set velocity velocity - accel
+  ]
+end
+
 to calculate-security-distance
   set security-distance velocity * 3
+end
 
+to stop-car-n [n]
+  ask cars with [who = n]
+  [
+    set velocity 0
+    set accel 0
+  ]
+end
+
+to resume-car-n [n]
+  ask cars with [who = n][
+    set velocity 1
+    set accel 1
+  ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -138,7 +162,7 @@ nCarsSetup
 nCarsSetup
 0
 100
-10.0
+25.0
 1
 1
 NIL
@@ -486,7 +510,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.2.1
+NetLogo 6.1.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
