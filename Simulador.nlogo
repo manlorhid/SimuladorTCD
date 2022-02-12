@@ -2,25 +2,28 @@ breed [cars car]
 globals[world-scale select-car]
 cars-own[velocity max-velocity accel security-distance]
 
+;;Escalado
 ;;1 segundo = 1 tick
-;;1m = 0.0033^ puntos (120km carretera), 1m = 12.5 puntos (5km carretera) OBSOLETO
+;;1m = 4/3 puntos (150m carretera), 1p = 0.75m
+
+;;Velocidades
 ;;10km/h = 2.77^ m/s
 ;;120km/h = 33.33^ puntos/tick
 to setup-cars[nCars]
  ca
  set select-car one-of cars
- set world-scale 1 ;; 1m = 1 patch, 1m = 1 patch
+ set world-scale (4 / 3)
  create-cars nCars
  ask patches with [pycor = 0 OR (pycor < 10 AND pycor > -10)][
    set pcolor grey
  ]
  ask patches with [pycor = 0 AND (pxcor mod 2) = 0][set pcolor white]
  ask cars [
-   set size 1 * 4
-   set velocity (random 14) + 1;;m/s
-   set max-velocity 33.33333;;m/s
-   set accel (random 3) + 1;;m/s
-   set security-distance 50 ;;m
+   set size  world-scale * 4
+   set velocity (random 2) + 1;;m/s
+   set max-velocity 10;;m/s
+   set accel (random 2) + 1;;m/s
+   set security-distance 5 ;;m
    setxy  (min-pxcor + 2) 0
    set shape "car"
    set heading 90
@@ -30,34 +33,38 @@ to setup-cars[nCars]
 end
 
 to initial-separate-cars
-  if any? other turtles-here [
-    fd 4
+  if any? other cars-here [
+    fd size + 0.5
     initial-separate-cars
   ]
 end
 
 to start-driving
+  no-display
   ask cars[
     calculate-security-distance
     let xCar xcor
-    let dCar security-distance * world-scale
+    let dCar world-scale * security-distance
     if (xCar + dCar) > max-pxcor [
       set dCar dCar - max-pxcor - xCar
       set xCar min-pxcor
     ]
-    let car-ahead one-of cars with [ycor = 0 AND (xcor > xCar AND xcor <= xCar + dCar + 4)]
-    ifelse car-ahead = nobody
+    let cars-ahead cars with [ycor = 0 AND (xcor > xCar AND xcor <= xCar + dCar + size)]
+    ifelse one-of cars-ahead = nobody
       [
         accelerate
     ][
-        brake
+        let min-x-cars-ahead min [xcor] of cars-ahead
+        let car-closest cars-ahead with [xcor = min-x-cars-ahead]
+        brake car-closest
     ]
     fd world-scale * velocity
   ]
+  display
   tick
 end
 
-to accelerate
+to accelerate;[car-closest]
   let next-velocity velocity + accel
   ifelse next-velocity < max-velocity[
     set velocity next-velocity
@@ -66,17 +73,24 @@ to accelerate
   ]
 end
 
-to brake
+to brake[car-closest]
+  let car-closest-velocity item 0 [velocity] of car-closest
   let next-velocity velocity - accel
-  ifelse next-velocity < 0[
+  (ifelse next-velocity < 0[
     set velocity 0
-  ][
-   set velocity next-velocity
   ]
+  next-velocity > car-closest-velocity[
+   set velocity car-closest-velocity
+  ])
 end
 
 to calculate-security-distance
-  set security-distance velocity * 3
+  ifelse velocity = 0 [
+    set security-distance size + 0.5
+
+  ][
+    set security-distance velocity * 3
+  ]
 end
 
 to stop-car-n [n]
@@ -95,13 +109,13 @@ to resume-car-n [n]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-0
-170
-25013
-384
+4
+152
+1579
+479
 -1
 -1
-5.0
+9.36
 1
 10
 1
@@ -111,8 +125,8 @@ GRAPHICS-WINDOW
 1
 1
 1
--2500
-2500
+-100
+100
 -20
 20
 0
@@ -164,17 +178,17 @@ nCarsSetup
 nCarsSetup
 0
 100
-2.0
+5.0
 1
 1
 NIL
 HORIZONTAL
 
 BUTTON
-135
-395
-342
-428
+1055
+60
+1262
+93
 ride-car
 ride (car 0)
 NIL
