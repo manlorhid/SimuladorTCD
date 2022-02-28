@@ -1,18 +1,20 @@
 breed [cars car]
-globals[world-scale select-car]
+globals[world-scale time-scale min-security-distance]
 cars-own[velocity max-velocity accel security-distance]
 
 ;;Escalado
-;;1 segundo = 1 tick
-;;1m = 4/3 puntos (150m carretera), 1p = 0.75m
+;;1 segundo = 1000 tick = 1 milisegundo
+;;1 metro = 4/3 puntos (150m carretera), 1 punto = 0.75 metros
 
 ;;Velocidades
 ;;10km/h = 2.77^ m/s
-;;120km/h = 33.33^ puntos/tick
+;;120km/h = 33.33^ m/s
+
 to setup-cars[nCars]
  ca
- set select-car one-of cars
  set world-scale (4 / 3)
+ set time-scale 1 / 1000
+ set min-security-distance 3 ;;m
  create-cars nCars
  ask patches with [pycor = 0 OR (pycor < 10 AND pycor > -10)][
    set pcolor grey
@@ -20,12 +22,12 @@ to setup-cars[nCars]
  ask patches with [pycor = 0 AND (pxcor mod 2) = 0][set pcolor white]
  ask cars [
    set size  world-scale * 4
-   set velocity (random 2) + 1;;m/s
-   set max-velocity 10;;m/s
-   set accel (random 2) + 1;;m/s
+   set velocity 0 ;;m/s
+   set max-velocity 9;;m/s
+   set accel 3;;m/s
    set security-distance 5 ;;m
    setxy  (min-pxcor + 2) 0
-   set shape "car"
+   set shape "square"
    set heading 90
    initial-separate-cars
  ]
@@ -44,26 +46,46 @@ to start-driving
   ask cars[
     calculate-security-distance
     let xCar xcor
-    let dCar world-scale * security-distance
-    if (xCar + dCar) > max-pxcor [
-      set dCar dCar - max-pxcor - xCar
-      set xCar min-pxcor
+    let dCar (velocity + (accel * time-scale)) * time-scale
+    set dCar (dCar + security-distance) * world-scale
+    ;;if (xCar + dCar) > max-pxcor [
+      ;;set dCar dCar - max-pxcor - xCar
+      ;;set xCar min-pxcor
+    ;;]
+    ask patches with [pycor = 0 AND (pxcor < xCar OR pxcor > xCar + dCar)][
+      set pcolor red
     ]
-    let cars-ahead cars with [ycor = 0 AND (xcor > xCar AND xcor <= xCar + dCar + size)]
-    ifelse one-of cars-ahead = nobody
-      [
-        accelerate
+    ask patches with [pycor = 0 AND (pxcor > xCar AND pxcor < xCar + dCar)][
+      set pcolor green
+    ]
+    let cars-ahead one-of cars with [ycor = 0 AND (xcor > xCar AND xcor <= xCar + dCar + size)]
+    ifelse cars-ahead != nobody[
+      ;;Frenada en caso de que se vaya a incumplir la distancia de seguridad
+      ifelse velocity - (accel * time-scale) >= 0[
+        set velocity velocity - (accel * time-scale)
+      ][
+        set velocity 0
+      ]
     ][
-        let min-x-cars-ahead min [xcor] of cars-ahead
-        let car-closest cars-ahead with [xcor = min-x-cars-ahead]
-        brake car-closest
+      ;;Acceleración en caso de que no haya violación de la distancia de seguridad
+      ifelse velocity + (accel * time-scale) <= max-velocity[
+        set velocity velocity + (accel * time-scale)
+      ][
+        set velocity max-velocity
+      ]
     ]
-    fd world-scale * velocity
+    fd world-scale * velocity * time-scale
   ]
   display
   tick
 end
 
+;;1.5 es igual a la regla de los 3 segundos, empequeñecido para cumplir las características de la maqueta
+to calculate-security-distance
+  set security-distance (velocity * 1.5 + min-security-distance)
+end
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 to accelerate;[car-closest]
   let next-velocity velocity + accel
   ifelse next-velocity < max-velocity[
@@ -84,14 +106,6 @@ to brake[car-closest]
   ])
 end
 
-to calculate-security-distance
-  ifelse velocity = 0 [
-    set security-distance size + 0.5
-
-  ][
-    set security-distance velocity * 3
-  ]
-end
 
 to stop-car-n [n]
   ask cars with [who = n]
@@ -111,8 +125,8 @@ end
 GRAPHICS-WINDOW
 4
 152
-1579
-479
+1893
+544
 -1
 -1
 9.36
@@ -178,28 +192,11 @@ nCarsSetup
 nCarsSetup
 0
 100
-5.0
+1.0
 1
 1
 NIL
 HORIZONTAL
-
-BUTTON
-1055
-60
-1262
-93
-ride-car
-ride (car 0)
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
 
 @#$#@#$#@
 ## WHAT IS IT?
