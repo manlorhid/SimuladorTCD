@@ -24,7 +24,7 @@ to setup-cars[nCars]
    set size  world-scale * 4
    set velocity 0 ;;m/s
    set max-velocity 9;;m/s
-   set accel 3;;m/s
+   set accel (random 8) + 1;;m/s
    set security-distance 5 ;;m
    setxy  (min-pxcor + 2) 0
    set shape "square"
@@ -48,17 +48,22 @@ to start-driving
     let xCar xcor
     let dCar (velocity + (accel * time-scale)) * time-scale
     set dCar (dCar + security-distance) * world-scale
-    ;;if (xCar + dCar) > max-pxcor [
-      ;;set dCar dCar - max-pxcor - xCar
-      ;;set xCar min-pxcor
-    ;;]
-    ask patches with [pycor = 0 AND (pxcor < xCar OR pxcor > xCar + dCar)][
-      set pcolor red
-    ]
-    ask patches with [pycor = 0 AND (pxcor > xCar AND pxcor < xCar + dCar)][
-      set pcolor green
-    ]
     let cars-ahead one-of cars with [ycor = 0 AND (xcor > xCar AND xcor <= xCar + dCar + size)]
+    print dCar
+    if (xCar + dCar) > max-pxcor [
+      set dCar dCar - max-pxcor - xCar
+      set xCar min-pxcor
+    ]
+    print dCar
+;    ask patches with [pycor = 0 AND (pxcor < xCar OR pxcor > xCar + dCar)][
+;      set pcolor red
+;    ]
+;    ask patches with [pycor = 0 AND (pxcor > xCar AND pxcor < xCar + dCar)][
+;      set pcolor green
+;    ]
+    if cars-ahead = nobody[
+      set cars-ahead one-of cars with [ycor = 0 AND (xcor > xCar AND xcor <= xCar + dCar + size)]
+    ]
     ifelse cars-ahead != nobody[
       ;;Frenada en caso de que se vaya a incumplir la distancia de seguridad
       ifelse velocity - (accel * time-scale) >= 0[
@@ -82,7 +87,15 @@ end
 
 ;;1.5 es igual a la regla de los 3 segundos, empequeñecido para cumplir las características de la maqueta
 to calculate-security-distance
-  set security-distance (velocity * 1.5 + min-security-distance)
+  let acum 0
+  ;;ARREGLAR ACCEL A CERO ERROR
+  let seconds ceiling (velocity / abs(accel + 1))
+  let i 0
+  repeat seconds[
+    set acum acum + velocity - i * abs(accel)
+    set i i + 1
+  ]
+  set security-distance acum
 end
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
