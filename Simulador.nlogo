@@ -45,24 +45,22 @@ to start-driving
   no-display
   ask cars[
     calculate-security-distance
+    let sizeCar size
     let xCar xcor
     let dCar (velocity + (accel * time-scale)) * time-scale
     set dCar (dCar + security-distance) * world-scale
-    let cars-ahead one-of cars with [ycor = 0 AND (xcor > xCar AND xcor <= xCar + dCar + size)]
-    print dCar
+    let cars-ahead one-of cars with [ycor = 0 AND (xcor > xCar AND xcor <= xCar + dCar + sizeCar)]
+
     if (xCar + dCar) > max-pxcor [
-      set dCar dCar - max-pxcor - xCar
+      if xCar > max-pxcor[
+        set dCar dCar + (xCar - max-pxcor)
+        set xCar max-pxcor
+      ]
+      set dCar dCar - max-pxcor + xCar
       set xCar min-pxcor
     ]
-    print dCar
-;    ask patches with [pycor = 0 AND (pxcor < xCar OR pxcor > xCar + dCar)][
-;      set pcolor red
-;    ]
-;    ask patches with [pycor = 0 AND (pxcor > xCar AND pxcor < xCar + dCar)][
-;      set pcolor green
-;    ]
     if cars-ahead = nobody[
-      set cars-ahead one-of cars with [ycor = 0 AND (xcor > xCar AND xcor <= xCar + dCar + size)]
+      set cars-ahead one-of cars with [ycor = 0 AND (xcor > xCar AND xcor <= xCar + dCar + sizeCar)]
     ]
     ifelse cars-ahead != nobody[
       ;;Frenada en caso de que se vaya a incumplir la distancia de seguridad
@@ -80,16 +78,19 @@ to start-driving
       ]
     ]
     fd world-scale * velocity * time-scale
+
   ]
   display
   tick
 end
 
-;;1.5 es igual a la regla de los 3 segundos, empequeñecido para cumplir las características de la maqueta
 to calculate-security-distance
   let acum 0
-  ;;ARREGLAR ACCEL A CERO ERROR
-  let seconds ceiling (velocity / abs(accel + 1))
+  ;;Estudiar el valor para evitar error division para accel = 0
+  let seconds 0
+  if accel >= 1[
+    set seconds ceiling (velocity / abs(accel))
+  ]
   let i 0
   repeat seconds[
     set acum acum + velocity - i * abs(accel)
@@ -98,6 +99,11 @@ to calculate-security-distance
   set security-distance acum
 end
 
+to color-patches[xCar dCar sizeCar color1 color2]
+  ask patches with[pycor = 0 AND (pxcor > xCar AND pxcor <= xCar + dCar + sizeCar)][
+   set pcolor color1
+  ]
+end
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 to accelerate;[car-closest]
   let next-velocity velocity + accel
@@ -138,11 +144,11 @@ end
 GRAPHICS-WINDOW
 4
 152
-1893
-544
+1358
+435
 -1
 -1
-9.36
+6.7
 1
 10
 1
@@ -205,7 +211,7 @@ nCarsSetup
 nCarsSetup
 0
 100
-1.0
+9.0
 1
 1
 NIL
