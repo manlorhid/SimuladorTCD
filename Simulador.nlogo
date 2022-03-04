@@ -49,20 +49,28 @@ to start-driving
     let xCar xcor
     let dCar (velocity + (accel * time-scale)) * time-scale
     set dCar (dCar + security-distance) * world-scale
-    let cars-ahead one-of cars with [ycor = 0 AND (xcor > xCar AND xcor <= xCar + dCar + sizeCar)]
+    let cars-ahead cars with [ycor = 0 AND (xcor >= xCar AND xcor <= xCar + dCar + sizeCar)]
 
     if (xCar + dCar) > max-pxcor [
-      if xCar > max-pxcor[
-        set dCar dCar + (xCar - max-pxcor)
-        set xCar max-pxcor
-      ]
+;      if xCar > max-pxcor[
+;        set dCar dCar - (xCar - max-pxcor)
+;        set xCar max-pxcor
+;       ; print "cambio dcar"
+;      ]
       set dCar dCar - max-pxcor + xCar
-      set xCar min-pxcor
+      set xCar min-pxcor - 1
     ]
-    if cars-ahead = nobody[
-      set cars-ahead one-of cars with [ycor = 0 AND (xcor > xCar AND xcor <= xCar + dCar + sizeCar)]
+;   color-patches xCar dCar sizeCar green red
+
+;    if who = 1[
+;      print (count cars-ahead)
+;    ]
+    if count cars-ahead <= 1[
+      set cars-ahead cars with [ycor = 0 AND (xcor >= xCar AND xcor <= xCar + dCar + sizeCar)]
+      print (count cars-ahead)
     ]
-    ifelse cars-ahead != nobody[
+
+    ifelse count cars-ahead > 1[
       ;;Frenada en caso de que se vaya a incumplir la distancia de seguridad
       ifelse velocity - (accel * time-scale) >= 0[
         set velocity velocity - (accel * time-scale)
@@ -85,23 +93,31 @@ to start-driving
 end
 
 to calculate-security-distance
-  let acum 0
+  let acum 1
   ;;Estudiar el valor para evitar error division para accel = 0
   let seconds 0
-  if accel >= 1[
-    set seconds ceiling (velocity / abs(accel))
-  ]
-  let i 0
-  repeat seconds[
-    set acum acum + velocity - i * abs(accel)
-    set i i + 1
+  ifelse velocity < 1 [
+    set acum 2
+  ][
+    if accel >= 1[
+      set seconds ceiling (velocity / abs(accel))
+    ]
+    let i 0
+    repeat seconds[
+      set acum acum + velocity - i * abs(accel)
+      set i i + 1
+    ]
   ]
   set security-distance acum
 end
 
 to color-patches[xCar dCar sizeCar color1 color2]
-  ask patches with[pycor = 0 AND (pxcor > xCar AND pxcor <= xCar + dCar + sizeCar)][
+  ask patches with[pycor = 0 AND (pxcor >= xCar AND pxcor <= xCar + dCar + sizeCar)][
+    ;print xCar + dCar + sizeCar
    set pcolor color1
+  ]
+  ask patches with[pycor = 0 AND (pxcor < xCar OR pxcor >= xCar + dCar + sizeCar)][
+   set pcolor color2
   ]
 end
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -211,7 +227,7 @@ nCarsSetup
 nCarsSetup
 0
 100
-9.0
+2.0
 1
 1
 NIL
