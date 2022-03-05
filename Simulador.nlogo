@@ -23,8 +23,8 @@ to setup-cars[nCars]
  ask cars [
    set size  world-scale * 4
    set velocity 0 ;;m/s
-   set max-velocity 20;;m/s
-   set accel 30;;m/s
+   set max-velocity 10;;m/s
+   set accel (random 2) + 1;;m/s
    set security-distance 5 ;;m
    setxy  (min-pxcor + 2) 0
    set shape "car"
@@ -108,7 +108,7 @@ to calculate-security-distance
       set i i + 1
     ]
   ]
-  set security-distance acum
+  set security-distance acum - (random 3)
 end
 
 to color-patches[xCar dCar color1 color2]
@@ -227,7 +227,7 @@ nCarsSetup
 nCarsSetup
 0
 100
-19.0
+21.0
 1
 1
 NIL
