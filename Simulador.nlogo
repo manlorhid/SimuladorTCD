@@ -23,11 +23,11 @@ to setup-cars[nCars]
  ask cars [
    set size  world-scale * 4
    set velocity 0 ;;m/s
-   set max-velocity 9;;m/s
-   set accel (random 8) + 1;;m/s
+   set max-velocity 20;;m/s
+   set accel 30;;m/s
    set security-distance 5 ;;m
    setxy  (min-pxcor + 2) 0
-   set shape "square"
+   set shape "car"
    set heading 90
    initial-separate-cars
  ]
@@ -47,27 +47,27 @@ to start-driving
     calculate-security-distance
     let sizeCar size
     let xCar xcor
-    let dCar (velocity + (accel * time-scale)) * time-scale
-    set dCar (dCar + security-distance) * world-scale
-    let cars-ahead cars with [ycor = 0 AND (xcor >= xCar AND xcor <= xCar + dCar + sizeCar)]
-
-    if (xCar + dCar) > max-pxcor [
-;      if xCar > max-pxcor[
-;        set dCar dCar - (xCar - max-pxcor)
-;        set xCar max-pxcor
-;       ; print "cambio dcar"
-;      ]
-      set dCar dCar - max-pxcor + xCar
-      set xCar min-pxcor - 1
+    let dCar sizeCar
+    ifelse velocity >= max-velocity[
+      set dCar dCar + (velocity * time-scale)
+    ][
+      set dCar dCar + ((velocity + (accel * time-scale)) * time-scale)
     ]
-;   color-patches xCar dCar sizeCar green red
+    set dCar (dCar + security-distance) * world-scale
+    let cars-ahead cars with [ycor = 0 AND (xcor >= xCar AND xcor <= xCar + dCar)]
 
-;    if who = 1[
-;      print (count cars-ahead)
-;    ]
     if count cars-ahead <= 1[
-      set cars-ahead cars with [ycor = 0 AND (xcor >= xCar AND xcor <= xCar + dCar + sizeCar)]
-      print (count cars-ahead)
+      if (xCar + dCar) > max-pxcor [
+
+        if xCar > max-pxcor[
+          set dCar dCar - (xCar - max-pxcor)
+          set xCar max-pxcor
+        ]
+        set dCar dCar - max-pxcor + xCar
+        set xCar min-pxcor - 1
+        let cwho who
+        set cars-ahead cars with [(ycor = 0 AND (xcor >= xCar AND xcor <= xCar + dCar)) OR who = cwho]
+      ]
     ]
 
     ifelse count cars-ahead > 1[
@@ -111,12 +111,12 @@ to calculate-security-distance
   set security-distance acum
 end
 
-to color-patches[xCar dCar sizeCar color1 color2]
-  ask patches with[pycor = 0 AND (pxcor >= xCar AND pxcor <= xCar + dCar + sizeCar)][
+to color-patches[xCar dCar color1 color2]
+  ask patches with[pycor = 0 AND (pxcor >= xCar AND pxcor <= xCar + dCar)][
     ;print xCar + dCar + sizeCar
    set pcolor color1
   ]
-  ask patches with[pycor = 0 AND (pxcor < xCar OR pxcor >= xCar + dCar + sizeCar)][
+  ask patches with[pycor = 0 AND (pxcor < xCar OR pxcor >= xCar + dCar)][
    set pcolor color2
   ]
 end
@@ -227,11 +227,60 @@ nCarsSetup
 nCarsSetup
 0
 100
-2.0
+19.0
 1
 1
 NIL
 HORIZONTAL
+
+BUTTON
+1170
+25
+1247
+58
+stop-car
+ask cars with [who = idcar][\nset velocity 0 \nset accel 0\n]
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+SLIDER
+1175
+65
+1347
+98
+idcar
+idcar
+0
+nCarsSetup - 1
+0.0
+1
+1
+NIL
+HORIZONTAL
+
+BUTTON
+1265
+25
+1357
+58
+resume-car
+ask cars with [ who = idcar] [\nset accel 2\n]
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
