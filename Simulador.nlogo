@@ -1,6 +1,6 @@
 breed [cars car]
 globals[world-scale time-scale min-security-distance]
-cars-own[velocity max-velocity accel security-distance]
+cars-own[velocity max-velocity accel accel-max accel-min security-distance]
 
 ;;Escalado
 ;;1 segundo = 1000 tick = 1 milisegundo
@@ -24,8 +24,9 @@ to setup-cars[nCars]
    set size  world-scale * 4
    set velocity 0 ;;m/s
    set max-velocity 10;;m/s
-   set accel (random 2) + 1;;m/s
-   set security-distance 5 ;;m
+   set accel 15;;m/s^2
+   set accel-max (random 2) + 1 ;;m/s^2
+   set accel-min 0 ;;m/s^2
    setxy  (min-pxcor + 2) 0
    set shape "car"
    set heading 90
@@ -44,7 +45,8 @@ end
 to start-driving
   no-display
   ask cars[
-    calculate-security-distance
+    ;calculate-security-distance
+    calculate-security-distance-formula
     let sizeCar size
     let xCar xcor
     let dCar sizeCar
@@ -110,6 +112,20 @@ to calculate-security-distance
   ]
   set security-distance acum - (random 3)
 end
+
+to calculate-security-distance-formula
+  ;d=v^2/(2Ua)
+  ifelse accel <= 0[
+    set security-distance 3
+  ][
+    set security-distance (velocity ^ 2)/ (2 * friction-co * accel)
+  ]
+
+end
+
+
+
+
 
 to color-patches[xCar dCar color1 color2]
   ask patches with[pycor = 0 AND (pxcor >= xCar AND pxcor <= xCar + dCar)][
@@ -227,7 +243,7 @@ nCarsSetup
 nCarsSetup
 0
 100
-21.0
+7.0
 1
 1
 NIL
@@ -239,7 +255,7 @@ BUTTON
 1247
 58
 stop-car
-ask cars with [who = idcar][\nset velocity 0 \nset accel 0\n]
+ask cars with [who = idcar][\nset velocity 0\nset accel 0\n]
 NIL
 1
 T
@@ -281,6 +297,21 @@ NIL
 NIL
 NIL
 1
+
+SLIDER
+560
+10
+732
+43
+friction-co
+friction-co
+0.01
+1
+1.0
+0.01
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
