@@ -24,9 +24,9 @@ to setup-cars[nCars]
    set size  world-scale * 4
    set velocity 0 ;;m/s
    set max-velocity 10;;m/s
-   set accel 3;;m/s^2
+   set accel 0;;m/s^2
    set accel-max 4 ;;m/s^2
-   set desaccel-max 3 ;;m/s^2
+   set desaccel-max 10 ;;m/s^2
    setxy  (min-pxcor + 2) 0
    set shape "car"
    set heading 90
@@ -64,7 +64,7 @@ to start-driving
     if count cars-ahead <= 1[
       if (xCar + dCar) > max-pxcor [
         if xCar > max-pxcor[
-          set dCar dCar - (xCar - max-pxcor)
+          set dCar dCar + (xCar - max-pxcor)
           set xCar max-pxcor
         ]
         set dCar dCar - max-pxcor + xCar
@@ -106,6 +106,9 @@ to start-driving-new
     let cwho who
 
     set dCar dCar + ((velocity + (accel * time-scale)) * time-scale) + sizeCar
+    set dCar dCar * world-scale
+
+
     ifelse velocity + (accel * time-scale) > max-velocity[
       set velocity max-velocity
       set accel 0
@@ -113,17 +116,15 @@ to start-driving-new
       set velocity velocity + (accel * time-scale)
     ]
 
-    set dCar dCar * world-scale
-
-    let cars-ahead cars with [ycor = 0 AND (xcor >= xCar AND xcor <= xCar + dCar)]
+    let cars-ahead cars with [ycor = 0 AND (xcor >= xCar AND xcor <= xCar + dCar)]  ;comprobación de xcor a fin del mundo
 
     if count cars-ahead <= 1[
       if (xCar + dCar) > max-pxcor [
         if xCar > max-pxcor[
-          set dCar dCar - (xCar - max-pxcor)
+          set dCar dCar + (xCar - max-pxcor)
           set xCar max-pxcor
         ]
-        set dCar dCar - max-pxcor + xCar
+        set dCar dCar - (max-pxcor - xCar)
         set xCar min-pxcor - 1
         set cars-ahead cars with [(ycor = 0 AND (xcor >= xCar AND xcor <= xCar + dCar)) OR who = cwho]
       ]
@@ -132,18 +133,21 @@ to start-driving-new
     ifelse count cars-ahead > 1[
       let cars-ahead-not-me cars-ahead with[who != cwho]
       let minXcor min [xcor] of cars-ahead-not-me
-      let closest-car cars-ahead-not-me with[xcor = minXcor]
+      let closest-car cars-ahead-not-me with[xcor = minXcor]              ;|----X--------------|| ------------------X-----------|
+
       let xb one-of [xcor] of closest-car
-      if xb < xCar[
+      if xb < xcor[
         set xb xb + max-pxcor * 2
       ]
-      let dab xb - xCar
+      let dab xb - xcor - sizeCar
       let vOpt calculate-velocity-opt dab
       let aOpt calculate-accel-opt vOpt
-      if aOpt < desaccel-max[
-       set aOpt desaccel-max
+
+
+      if aOpt < (- desaccel-max)[
+       set aOpt (- desaccel-max)
       ]
-      if aOpt < accel-max[
+      if aOpt > accel-max[
        set aOpt accel-max
       ]
       set accel aOpt
@@ -151,7 +155,6 @@ to start-driving-new
       set accel accel-max
     ]
     fd world-scale * velocity * time-scale
-
   ]
   display
   tick
@@ -186,7 +189,7 @@ to calculate-security-distance-formula
 end
 
 to-report calculate-velocity-opt [d]
-  ;VOpt=sqrt(2*Da*d*U)
+  ;VOpt=sqrt(2*Da*d*U)  FINAL DEL MUNDO DISTANCIA NEGATIVA
   let vOpt 2 * desaccel-max * d * friction-co
   set vOpt sqrt vOpt
   report vOpt
@@ -194,6 +197,7 @@ end
 
 to-report calculate-accel-opt [vOpt]
   report vOpt - velocity
+
 end
 
 
@@ -384,10 +388,10 @@ NIL
 HORIZONTAL
 
 BUTTON
-175
-625
-302
-658
+210
+105
+337
+138
 NIL
 start-driving-new
 T
