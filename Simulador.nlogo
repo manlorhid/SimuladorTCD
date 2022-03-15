@@ -1,6 +1,6 @@
 breed [cars car]
 globals[world-scale time-scale min-security-distance]
-cars-own[velocity max-velocity accel accel-max accel-min security-distance]
+cars-own[velocity max-velocity accel accel-max desaccel-max security-distance]
 
 ;;Escalado
 ;;1 segundo = 1000 tick = 1 milisegundo
@@ -24,9 +24,9 @@ to setup-cars[nCars]
    set size  world-scale * 4
    set velocity 0 ;;m/s
    set max-velocity 10;;m/s
-   set accel 15;;m/s^2
-   set accel-max (random 2) + 1 ;;m/s^2
-   set accel-min 0 ;;m/s^2
+   set accel 3;;m/s^2
+   set accel-max 4 ;;m/s^2
+   set desaccel-max 3 ;;m/s^2
    setxy  (min-pxcor + 2) 0
    set shape "car"
    set heading 90
@@ -47,20 +47,22 @@ to start-driving
   ask cars[
     ;calculate-security-distance
     calculate-security-distance-formula
+
     let sizeCar size
     let xCar xcor
     let dCar sizeCar
+
     ifelse velocity >= max-velocity[
       set dCar dCar + (velocity * time-scale)
     ][
       set dCar dCar + ((velocity + (accel * time-scale)) * time-scale)
     ]
     set dCar (dCar + security-distance) * world-scale
+
     let cars-ahead cars with [ycor = 0 AND (xcor >= xCar AND xcor <= xCar + dCar)]
 
     if count cars-ahead <= 1[
       if (xCar + dCar) > max-pxcor [
-
         if xCar > max-pxcor[
           set dCar dCar - (xCar - max-pxcor)
           set xCar max-pxcor
@@ -86,6 +88,67 @@ to start-driving
       ][
         set velocity max-velocity
       ]
+    ]
+    fd world-scale * velocity * time-scale
+
+  ]
+  display
+  tick
+end
+
+to start-driving-new
+  no-display
+  ask cars[
+
+    let sizeCar size
+    let xCar xcor
+    let dCar 10;;m
+    let cwho who
+
+    set dCar dCar + ((velocity + (accel * time-scale)) * time-scale) + sizeCar
+    ifelse velocity + (accel * time-scale) > max-velocity[
+      set velocity max-velocity
+      set accel 0
+    ][
+      set velocity velocity + (accel * time-scale)
+    ]
+
+    set dCar dCar * world-scale
+
+    let cars-ahead cars with [ycor = 0 AND (xcor >= xCar AND xcor <= xCar + dCar)]
+
+    if count cars-ahead <= 1[
+      if (xCar + dCar) > max-pxcor [
+        if xCar > max-pxcor[
+          set dCar dCar - (xCar - max-pxcor)
+          set xCar max-pxcor
+        ]
+        set dCar dCar - max-pxcor + xCar
+        set xCar min-pxcor - 1
+        set cars-ahead cars with [(ycor = 0 AND (xcor >= xCar AND xcor <= xCar + dCar)) OR who = cwho]
+      ]
+    ]
+
+    ifelse count cars-ahead > 1[
+      let cars-ahead-not-me cars-ahead with[who != cwho]
+      let minXcor min [xcor] of cars-ahead-not-me
+      let closest-car cars-ahead-not-me with[xcor = minXcor]
+      let xb one-of [xcor] of closest-car
+      if xb < xCar[
+        set xb xb + max-pxcor * 2
+      ]
+      let dab xb - xCar
+      let vOpt calculate-velocity-opt dab
+      let aOpt calculate-accel-opt vOpt
+      if aOpt < desaccel-max[
+       set aOpt desaccel-max
+      ]
+      if aOpt < accel-max[
+       set aOpt accel-max
+      ]
+      set accel aOpt
+    ][
+      set accel accel-max
     ]
     fd world-scale * velocity * time-scale
 
@@ -120,11 +183,18 @@ to calculate-security-distance-formula
   ][
     set security-distance (velocity ^ 2)/ (2 * friction-co * accel)
   ]
-
 end
 
+to-report calculate-velocity-opt [d]
+  ;VOpt=sqrt(2*Da*d*U)
+  let vOpt 2 * desaccel-max * d * friction-co
+  set vOpt sqrt vOpt
+  report vOpt
+end
 
-
+to-report calculate-accel-opt [vOpt]
+  report vOpt - velocity
+end
 
 
 to color-patches[xCar dCar color1 color2]
@@ -256,7 +326,7 @@ BUTTON
 58
 stop-car
 ask cars with [who = idcar][\nset velocity 0\nset accel 0\n]
-NIL
+T
 1
 T
 OBSERVER
@@ -312,6 +382,23 @@ friction-co
 1
 NIL
 HORIZONTAL
+
+BUTTON
+175
+625
+302
+658
+NIL
+start-driving-new
+T
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
