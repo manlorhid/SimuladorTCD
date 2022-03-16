@@ -24,7 +24,7 @@ to setup-cars[nCars]
    set size  world-scale * 4
    set velocity 0 ;;m/s
    set max-velocity 10;;m/s
-   set accel 0;;m/s^2
+   set accel 2;;m/s^2
    set accel-max 4 ;;m/s^2
    set desaccel-max 2 ;;m/s^2
    setxy  (min-pxcor + 2) 0
@@ -173,6 +173,103 @@ to start-driving-new
   tick
 end
 
+to start-driving-def
+  no-display
+  ask cars[
+    ;1º Definimos variables
+    let sizeCar size
+    let xCar xcor
+    let dCar 10 ;Rango del coche
+    let cwho who
+
+    ;3º Comprobamos que la velocidad en el siguiente instante no excede de la máxima.
+
+    ifelse velocity + (accel * time-scale) > max-velocity[
+      set velocity max-velocity
+      set accel 0
+    ][
+      set velocity velocity + (accel * time-scale)
+    ]
+
+    ;4º Cálculo del coche en el siguiente instante.
+    set dCar dCar + (velocity * time-scale) + sizeCar
+    set dCar dCar * world-scale
+
+    ;5º Comprobación de existencia de coches desde Xcar a fin del mundo.
+    let cars-ahead cars with [ycor = 0 AND (xcor >= xCar AND xcor <= xCar + dCar)]
+
+    ;6º ¿Qué ocurre si no hay coches en el rango de nuestro coche?
+    if count cars-ahead <= 1[
+      ;6.1: Valoramos si nuestro rango se ha excedido del fin del mundo.
+      if (xCar + dCar) > max-pxcor [
+        if xCar > max-pxcor[
+          set dCar dCar + (xCar - max-pxcor)
+          set xCar max-pxcor
+        ]
+        ;6.2 Recalculamos el rango para el mundo después del fin y valoramos de nuevo si hay coches dentro del rango.
+        set dCar dCar - (max-pxcor - xCar) + 1
+        set xCar min-pxcor - 1
+        set cars-ahead cars with [(ycor = 0 AND (xcor >= xCar AND xcor <= xCar + dCar)) OR who = cwho]
+      ]
+    ]
+
+    ;7º ¿Qué ocurre si hay algún coche en el rango de nuestro coche?
+    ifelse count cars-ahead > 1[
+      ;7.1 Obtenemos la coordenada x del coche más cercano al nuestro en el eje
+      let cars-ahead-not-me cars-ahead with[who != cwho]
+      let minXcor min [xcor] of cars-ahead-not-me
+      let closest-car cars-ahead-not-me with[xcor = minXcor]
+      let xb one-of [xcor] of closest-car
+
+
+      ;7.2 Si resulta que la x de ese coche es menor al de nuestro coche habilitamos el valor para después calcular la distancia entre ellos.
+      if xb < xcor[
+        set xb xb + max-pxcor * 2
+      ]
+
+      ;7.3 Calculamos la distancia real entre nuestro coche y el siguiente.
+      let dab (xb - xcor) * (1 / world-scale)
+      set dab dab - (sizeCar * (1 / world-scale))
+
+      ;7.3.1 Habilitar distancia en caso de ser menor de 0.
+      if dab < 0[
+        set dab 0
+      ]
+
+      ;7.4 Calculamos la distancia de seguridad óptima para nuestro coche respecto a velocidad del coche más cercano.
+      let vb one-of [velocity] of closest-car
+      calculate-security-distance-formula-vb vb
+
+      let sx xb - security-distance
+      if sx > xb [
+        set sx (max-pxcor - (security-distance - (xb - min-pxcor)))
+      ]
+
+      ;7.6 Definir variables para el cálculo de la aceleración/desaceleración
+      let dsx sx - xcor
+      if dsx > sx  [
+        set dsx sx - min-pxcor
+        set dsx dsx + (max-pxcor - xcor)
+      ]
+
+      ;7.7 Cálculo de aceleración/desaceleración desde xcor a Sx.                          |---------X-------|---X-------
+      let accel-to-sx calculate-accel-to-sx dsx
+
+      if accel-to-sx < 0 [
+        set accel-to-sx  (- desaccel-max)
+      ]
+      if accel-to-sx > accel-max[
+       set accel-to-sx accel-max
+      ]
+      set accel accel-to-sx
+     ][
+      set accel accel-max
+    ]
+    fd world-scale * velocity * time-scale
+  ]
+  display
+  tick
+end
 ; TO DO : Arreglar parada coche de la función de aceleración óptima
 ;
 
@@ -195,10 +292,6 @@ to calculate-security-distance
   set security-distance acum - (random 3)
 end
 
-to calculate-security-distance-new [vb]
-
-
-end
 
 to calculate-security-distance-formula
   ;d=v^2/(2Ua)
@@ -207,6 +300,23 @@ to calculate-security-distance-formula
   ][
     set security-distance (velocity ^ 2)/ (2 * friction-co * accel)
   ]
+end
+
+
+to calculate-security-distance-formula-vb[vb]
+  ;d=v^2/(2Ua)
+  ifelse accel <= 0[
+    set security-distance 3
+  ][
+    set security-distance (velocity ^ 2)/ (2 * friction-co * accel)
+  ]
+end
+
+to-report calculate-accel-to-sx [dsx]
+  ;a=v^2/(2Ud)
+  let accel-to-sx ((velocity ^ 2)/ (2 * friction-co * dsx))
+ ;MIRAR DESACELERACIÓN
+  report accel-to-sx
 end
 
 to-report calculate-velocity-opt [d]
@@ -409,12 +519,29 @@ NIL
 HORIZONTAL
 
 BUTTON
-210
-105
-337
-138
+125
+102
+252
+135
 NIL
 start-driving-new
+T
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+1206
+108
+1325
+142
+NIL
+start-driving-def
 T
 1
 T
