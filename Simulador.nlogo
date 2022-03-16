@@ -26,7 +26,7 @@ to setup-cars[nCars]
    set max-velocity 10;;m/s
    set accel 0;;m/s^2
    set accel-max 4 ;;m/s^2
-   set desaccel-max 10 ;;m/s^2
+   set desaccel-max 2 ;;m/s^2
    setxy  (min-pxcor + 2) 0
    set shape "car"
    set heading 90
@@ -67,7 +67,7 @@ to start-driving
           set dCar dCar + (xCar - max-pxcor)
           set xCar max-pxcor
         ]
-        set dCar dCar - max-pxcor + xCar
+        set dCar dCar - max-pxcor + xCar + 1
         set xCar min-pxcor - 1
         let cwho who
         set cars-ahead cars with [(ycor = 0 AND (xcor >= xCar AND xcor <= xCar + dCar)) OR who = cwho]
@@ -102,12 +102,8 @@ to start-driving-new
 
     let sizeCar size
     let xCar xcor
-    let dCar 10;;m
+    let dCar 150;;m
     let cwho who
-
-    set dCar dCar + ((velocity + (accel * time-scale)) * time-scale) + sizeCar
-    set dCar dCar * world-scale
-
 
     ifelse velocity + (accel * time-scale) > max-velocity[
       set velocity max-velocity
@@ -115,6 +111,13 @@ to start-driving-new
     ][
       set velocity velocity + (accel * time-scale)
     ]
+;    print "---------"
+;    print velocity
+;      print vOpt
+;      print aOpt
+
+    set dCar dCar + (velocity * time-scale) + sizeCar
+    set dCar dCar * world-scale
 
     let cars-ahead cars with [ycor = 0 AND (xcor >= xCar AND xcor <= xCar + dCar)]  ;comprobación de xcor a fin del mundo
 
@@ -124,7 +127,7 @@ to start-driving-new
           set dCar dCar + (xCar - max-pxcor)
           set xCar max-pxcor
         ]
-        set dCar dCar - (max-pxcor - xCar)
+        set dCar dCar - (max-pxcor - xCar) + 1
         set xCar min-pxcor - 1
         set cars-ahead cars with [(ycor = 0 AND (xcor >= xCar AND xcor <= xCar + dCar)) OR who = cwho]
       ]
@@ -139,13 +142,23 @@ to start-driving-new
       if xb < xcor[
         set xb xb + max-pxcor * 2
       ]
-      let dab xb - xcor - sizeCar
+      let dab (xb - xcor) * (1 / world-scale)
+      set dab dab - (sizeCar * (1 / world-scale))
+      if dab < 0[
+        set dab 0
+      ]
       let vOpt calculate-velocity-opt dab
       let aOpt calculate-accel-opt vOpt
-
-
-      if aOpt < (- desaccel-max)[
-       set aOpt (- desaccel-max)
+;      print "---------"
+;      print who
+;      print vOpt
+;      print aOpt
+;
+;      if aOpt < (- desaccel-max)[
+;       set aOpt (- desaccel-max)
+;      ]
+      if aOpt < 0 [
+        set aOpt  (- desaccel-max)
       ]
       if aOpt > accel-max[
        set aOpt accel-max
@@ -159,6 +172,9 @@ to start-driving-new
   display
   tick
 end
+
+; TO DO : Arreglar parada coche de la función de aceleración óptima
+;
 
 to calculate-security-distance
   let acum 1
@@ -177,6 +193,11 @@ to calculate-security-distance
     ]
   ]
   set security-distance acum - (random 3)
+end
+
+to calculate-security-distance-new [vb]
+
+
 end
 
 to calculate-security-distance-formula
@@ -317,7 +338,7 @@ nCarsSetup
 nCarsSetup
 0
 100
-7.0
+2.0
 1
 1
 NIL
