@@ -179,7 +179,7 @@ to start-driving-def
     ;1º Definimos variables
     let sizeCar size
     let xCar xcor
-    let dCar 10 ;Rango del coche
+    let dCar 100 ;Rango del coche
     let cwho who
 
     ;3º Comprobamos que la velocidad en el siguiente instante no excede de la máxima.
@@ -240,22 +240,23 @@ to start-driving-def
       let vb one-of [velocity] of closest-car
       calculate-security-distance-formula-vb vb
 
-      let sx xb - security-distance
+      let sx xb - security-distance * world-scale
       if sx > xb [
         set sx (max-pxcor - (security-distance - (xb - min-pxcor)))
       ]
+     ; ask patches with[pxcor = ceiling(sx)][set pcolor green]
 
       ;7.6 Definir variables para el cálculo de la aceleración/desaceleración
-      let dsx sx - xcor
+      let dsx sx - (xcor + sizeCar)
       if dsx > sx  [
         set dsx sx - min-pxcor
         set dsx dsx + (max-pxcor - xcor)
       ]
 
-      ;7.7 Cálculo de aceleración/desaceleración desde xcor a Sx.                          |---------X-------|---X-------
-      let accel-to-sx calculate-accel-to-sx dsx
+      ;7.7 Cálculo de aceleración/desaceleración desde xcor a Sx.                          ---A--------------------------X----|-----X           Vf^2 - Vi^2 / 2 *a * U
+      let accel-to-sx calculate-accel-to-sx vb (dsx * (3 / 4))
 
-      if accel-to-sx < 0 [
+      if accel-to-sx < (- desaccel-max) [
         set accel-to-sx  (- desaccel-max)
       ]
       if accel-to-sx > accel-max[
@@ -270,10 +271,72 @@ to start-driving-def
   display
   tick
 end
+
+
+
+to start-driving-def-2
+  no-display
+  ;Sin fin del mundo contemplado    REVISAR
+
+  ask cars[
+
+    ;1º Definimos variables
+    let sizeCar size
+    let xmCar xcor * 3 / 4
+    let xpCar xcor
+    let ymCar ycor * 3 / 4
+    let ypCar ycor
+    let accelT accel / time-scale
+    let accelMaxT accel-max / time-scale
+    let accelDesMaxT desaccel-max / time-scale
+    let velocityT velocity / time-scale
+    let sentido heading
+    let cwho who
+    let dCar 100 ;Rango del coche
+
+    ;time-scale accel accel-max desaccel-max
+
+    ;; Obtener coche más cercano
+    let cars-ahead cars with [ycor = ypCar and heading = sentido and xcor > xpCar]
+
+    if count cars-ahead > 0 [
+      let bCar one-of cars-ahead with [xcor = min [xcor] of cars-ahead]
+
+      ;Cálculo de distancias de seguridad
+      let vb [velocity] of bCar
+      let xb [xcor] of bCar * (3 / 4)
+      let sa (calculate-security-distance-formula-v velocity)
+      let sb (calculate-security-distance-formula-v vb)
+
+      ;Cálculo de puntos de seguridad (operación)
+      let pSa xb - sa
+      let pSb xb - sb
+
+      let dxaSa pSa - xmCar
+      let dxaSb pSb - xmCar
+
+      if dxaSa > 0 [
+        if-else xmCar + velocityT + accelMaxT  <= pSa [
+          set accel accel-max
+        ][
+          set accel xmCar + velocityT - pSa
+        ]
+        ;COMENTAR EL CASO DEL ELSE
+      ]
+
+
+    ]
+
+
+  ]
+  display
+  tick
+end
+
 ; TO DO : Arreglar parada coche de la función de aceleración óptima
 ;
 
-to calculate-security-distance
+to calculate-security-distance  ;Anticuado
   let acum 1
   ;;Estudiar el valor para evitar error division para accel = 0
   let seconds 0
@@ -293,29 +356,35 @@ to calculate-security-distance
 end
 
 
-to calculate-security-distance-formula
+to calculate-security-distance-formula ; Anticuado
   ;d=v^2/(2Ua)
   ifelse accel <= 0[
     set security-distance 3
   ][
-    set security-distance (velocity ^ 2)/ (2 * friction-co * accel)
+    set security-distance (velocity ^ 2)/ (2 * friction-co * desaccel-max)
   ]
 end
 
 
-to calculate-security-distance-formula-vb[vb]
+to calculate-security-distance-formula-vb[vb] ;;Anticuado
   ;d=v^2/(2Ua)
   ifelse accel <= 0[
     set security-distance 3
   ][
-    set security-distance (velocity ^ 2)/ (2 * friction-co * accel)
+    set security-distance (vb ^ 2 )/ (2 * friction-co * desaccel-max)
   ]
+  set security-distance security-distance
 end
 
-to-report calculate-accel-to-sx [dsx]
+to-report calculate-security-distance-formula-v [v]
+  ;d=v^2/(2Ua)
+  report (v ^ 2 )/ (2 * friction-co * desaccel-max) ;Queda añadirle un offset
+end
+
+
+to-report calculate-accel-to-sx [v dsx]
   ;a=v^2/(2Ud)
-  let accel-to-sx ((velocity ^ 2)/ (2 * friction-co * dsx))
- ;MIRAR DESACELERACIÓN
+  let accel-to-sx (((v ^ 2) - (velocity ^ 2)) / (2 * friction-co * dsx))
   report accel-to-sx
 end
 
@@ -542,6 +611,23 @@ BUTTON
 142
 NIL
 start-driving-def
+T
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+1050
+110
+1182
+143
+NIL
+start-driving-def-2
 T
 1
 T
