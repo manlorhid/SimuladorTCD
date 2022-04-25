@@ -1,11 +1,11 @@
 breed [cars car]
-globals[world-scale time-scale min-security-distance]
-cars-own[velocity max-velocity accel accel-max desaccel-max security-distance stopped]
+globals[world-scale time-scale]
+cars-own[velocity max-velocity accel accel-max desaccel-max security-distance stopped aOptima]
 
 ;;Escalado
 ;;1 segundo = 1000 tick = 1 milisegundo
 ;;1 metro = 4/3 puntos (150m carretera), 1 punto = 0.75 metros
-
+;;1 punto = 3/4 metros
 ;;Velocidades
 ;;10km/h = 2.77^ m/s
 ;;120km/h = 33.33^ m/s
@@ -14,19 +14,19 @@ to setup-cars[nCars]
  ca
  set world-scale (4 / 3)
  set time-scale 1 / 1000
- set min-security-distance 3 ;;m
  create-cars nCars
  ask patches with [pycor = 0 OR (pycor < 10 AND pycor > -10)][
    set pcolor grey
  ]
  ask patches with [pycor = 0 AND (pxcor mod 2) = 0][set pcolor white]
  ask cars [
-   set size  world-scale * 4
+   set size world-scale * 4
+   ;set size  decimal-format ( world-scale * 4) 2
    set velocity 0 ;;m/s
-   set max-velocity 10;;m/s
-   set accel 2;;m/s^2
+   set max-velocity 33.333333;;m/s
+   set accel 4;;m/s^2
    set accel-max 4 ;;m/s^2
-   set desaccel-max 2 ;;m/s^2
+   set desaccel-max 6 ;;m/s^2
    setxy  (min-pxcor + 2) 0
    set shape "car"
    set heading 90
@@ -38,265 +38,34 @@ end
 
 to initial-separate-cars
   if any? other cars-here [
-    fd size + 0.5
+    fd size + 0.45;0.5
     initial-separate-cars
   ]
 end
 
-to start-driving
-  no-display
-  ask cars[
-    ;calculate-security-distance
-    calculate-security-distance-formula
-
-    let sizeCar size
-    let xCar xcor
-    let dCar sizeCar
-
-    ifelse velocity >= max-velocity[
-      set dCar dCar + (velocity * time-scale)
-    ][
-      set dCar dCar + ((velocity + (accel * time-scale)) * time-scale)
-    ]
-    set dCar (dCar + security-distance) * world-scale
-
-    let cars-ahead cars with [ycor = 0 AND (xcor >= xCar AND xcor <= xCar + dCar)]
-
-    if count cars-ahead <= 1[
-      if (xCar + dCar) > max-pxcor [
-        if xCar > max-pxcor[
-          set dCar dCar + (xCar - max-pxcor)
-          set xCar max-pxcor
-        ]
-        set dCar dCar - max-pxcor + xCar + 1
-        set xCar min-pxcor - 1
-        let cwho who
-        set cars-ahead cars with [(ycor = 0 AND (xcor >= xCar AND xcor <= xCar + dCar)) OR who = cwho]
-      ]
-    ]
-
-    ifelse count cars-ahead > 1[
-      ;;Frenada en caso de que se vaya a incumplir la distancia de seguridad
-      ifelse velocity - (accel * time-scale) >= 0[
-        set velocity velocity - (accel * time-scale)
-      ][
-        set velocity 0
-      ]
-    ][
-      ;;Acceleración en caso de que no haya violación de la distancia de seguridad
-      ifelse velocity + (accel * time-scale) <= max-velocity[
-        set velocity velocity + (accel * time-scale)
-      ][
-        set velocity max-velocity
-      ]
-    ]
-    fd world-scale * velocity * time-scale
-
-  ]
-  display
-  tick
-end
-
-to start-driving-new
-  no-display
-  ask cars[
-
-    let sizeCar size
-    let xCar xcor
-    let dCar 150;;m
-    let cwho who
-
-    ifelse velocity + (accel * time-scale) > max-velocity[
-      set velocity max-velocity
-      set accel 0
-    ][
-      set velocity velocity + (accel * time-scale)
-    ]
-;    print "---------"
-;    print velocity
-;      print vOpt
-;      print aOpt
-
-    set dCar dCar + (velocity * time-scale) + sizeCar
-    set dCar dCar * world-scale
-
-    let cars-ahead cars with [ycor = 0 AND (xcor >= xCar AND xcor <= xCar + dCar)]  ;comprobación de xcor a fin del mundo
-
-    if count cars-ahead <= 1[
-      if (xCar + dCar) > max-pxcor [
-        if xCar > max-pxcor[
-          set dCar dCar + (xCar - max-pxcor)
-          set xCar max-pxcor
-        ]
-        set dCar dCar - (max-pxcor - xCar) + 1
-        set xCar min-pxcor - 1
-        set cars-ahead cars with [(ycor = 0 AND (xcor >= xCar AND xcor <= xCar + dCar)) OR who = cwho]
-      ]
-    ]
-
-    ifelse count cars-ahead > 1[
-      let cars-ahead-not-me cars-ahead with[who != cwho]
-      let minXcor min [xcor] of cars-ahead-not-me
-      let closest-car cars-ahead-not-me with[xcor = minXcor]              ;|----X--------------|| ------------------X-----------|
-
-      let xb one-of [xcor] of closest-car
-      if xb < xcor[
-        set xb xb + max-pxcor * 2
-      ]
-      let dab (xb - xcor) * (1 / world-scale)
-      set dab dab - (sizeCar * (1 / world-scale))
-      if dab < 0[
-        set dab 0
-      ]
-      let vOpt calculate-velocity-opt dab
-      let aOpt calculate-accel-opt vOpt
-;      print "---------"
-;      print who
-;      print vOpt
-;      print aOpt
-;
-;      if aOpt < (- desaccel-max)[
-;       set aOpt (- desaccel-max)
-;      ]
-      if aOpt < 0 [
-        set aOpt  (- desaccel-max)
-      ]
-      if aOpt > accel-max[
-       set aOpt accel-max
-      ]
-      set accel aOpt
-    ][
-      set accel accel-max
-    ]
-    fd world-scale * velocity * time-scale
-  ]
-  display
-  tick
-end
-
-to start-driving-def
-  no-display
-  ask cars[
-    ;1º Definimos variables
-    let sizeCar size
-    let xCar xcor
-    let dCar 100 ;Rango del coche
-    let cwho who
-
-    ;3º Comprobamos que la velocidad en el siguiente instante no excede de la máxima.
-
-    ifelse velocity + (accel * time-scale) > max-velocity[
-      set velocity max-velocity
-      set accel 0
-    ][
-      set velocity velocity + (accel * time-scale)
-    ]
-
-    ;4º Cálculo del coche en el siguiente instante.
-    set dCar dCar + (velocity * time-scale) + sizeCar
-    set dCar dCar * world-scale
-
-    ;5º Comprobación de existencia de coches desde Xcar a fin del mundo.
-    let cars-ahead cars with [ycor = 0 AND (xcor >= xCar AND xcor <= xCar + dCar)]
-
-    ;6º ¿Qué ocurre si no hay coches en el rango de nuestro coche?
-    if count cars-ahead <= 1[
-      ;6.1: Valoramos si nuestro rango se ha excedido del fin del mundo.
-      if (xCar + dCar) > max-pxcor [
-        if xCar > max-pxcor[
-          set dCar dCar + (xCar - max-pxcor)
-          set xCar max-pxcor
-        ]
-        ;6.2 Recalculamos el rango para el mundo después del fin y valoramos de nuevo si hay coches dentro del rango.
-        set dCar dCar - (max-pxcor - xCar) + 1
-        set xCar min-pxcor - 1
-        set cars-ahead cars with [(ycor = 0 AND (xcor >= xCar AND xcor <= xCar + dCar)) OR who = cwho]
-      ]
-    ]
-
-    ;7º ¿Qué ocurre si hay algún coche en el rango de nuestro coche?
-    ifelse count cars-ahead > 1[
-      ;7.1 Obtenemos la coordenada x del coche más cercano al nuestro en el eje
-      let cars-ahead-not-me cars-ahead with[who != cwho]
-      let minXcor min [xcor] of cars-ahead-not-me
-      let closest-car cars-ahead-not-me with[xcor = minXcor]
-      let xb one-of [xcor] of closest-car
-
-
-      ;7.2 Si resulta que la x de ese coche es menor al de nuestro coche habilitamos el valor para después calcular la distancia entre ellos.
-      if xb < xcor[
-        set xb xb + max-pxcor * 2
-      ]
-
-      ;7.3 Calculamos la distancia real entre nuestro coche y el siguiente.
-      let dab (xb - xcor) * (1 / world-scale)
-      set dab dab - (sizeCar * (1 / world-scale))
-
-      ;7.3.1 Habilitar distancia en caso de ser menor de 0.
-      if dab < 0[
-        set dab 0
-      ]
-
-      ;7.4 Calculamos la distancia de seguridad óptima para nuestro coche respecto a velocidad del coche más cercano.
-      let vb one-of [velocity] of closest-car
-      calculate-security-distance-formula-vb vb
-
-      let sx xb - security-distance * world-scale
-      if sx > xb [
-        set sx (max-pxcor - (security-distance - (xb - min-pxcor)))
-      ]
-     ; ask patches with[pxcor = ceiling(sx)][set pcolor green]
-
-      ;7.6 Definir variables para el cálculo de la aceleración/desaceleración
-      let dsx sx - (xcor + sizeCar)
-      if dsx > sx  [
-        set dsx sx - min-pxcor
-        set dsx dsx + (max-pxcor - xcor)
-      ]
-
-      ;7.7 Cálculo de aceleración/desaceleración desde xcor a Sx.                          ---A--------------------------X----|-----X           Vf^2 - Vi^2 / 2 *a * U
-      let accel-to-sx calculate-accel-to-sx vb (dsx * (3 / 4))
-
-      if accel-to-sx < (- desaccel-max) [
-        set accel-to-sx  (- desaccel-max)
-      ]
-      if accel-to-sx > accel-max[
-       set accel-to-sx accel-max
-      ]
-      set accel accel-to-sx
-     ][
-      set accel accel-max
-    ]
-    fd world-scale * velocity * time-scale
-  ]
-  display
-  tick
-end
-
-
-
 to start-driving-def-2
   no-display
-  ;Sin fin del mundo contemplado    REVISAR
-
   ask cars[
     if stopped = false[
          ;1º Definimos variables
          let sizeCar size
+         let sizeCarm sizeCar * 3 / 4
          let xmCar xcor * 3 / 4
          let xpCar xcor
-         let ymCar ycor * 3 / 4
-         let ypCar ycor
+         let ymCar decimal-format (ycor * 3 / 4) 3
+         let ypCar decimal-format ycor 3
          let accelT accel * time-scale
+         ;let accelT decimal-format (accel * time-scale) 3
          let accelMaxT accel-max * time-scale
+         ;let accelMaxT decimal-format (accel-max * time-scale) 3
          let accelDesMaxT desaccel-max * time-scale
+         ;let accelDesMaxT decimal-format (desaccel-max * time-scale) 3
          let velocityT velocity * time-scale
+         ;let velocityT decimal-format (velocity * time-scale) 3
          let sentido heading
          let cwho who
          let aOpt 0
          let dCar 100 ;Rango del coche
-
-         ;time-scale accel accel-max desaccel-max
 
          ;; Obtener coche más cercano
          let cars-ahead cars with [ycor = ypCar and heading = sentido and xcor > xpCar ] ; or xcor < xpCar
@@ -304,22 +73,24 @@ to start-driving-def-2
          ifelse count cars-ahead > 0 [
 
            let bCar one-of cars-ahead with [xcor = min [xcor] of cars-ahead and xcor > xpCar ]
-;           if count bCar = 0[
-;              set bCar one-of cars-ahead with [xcor = min [xcor] of cars-ahead]
-;           ]
-
 ;           print cwho
 ;           print [who] of bCar
 ;           print "-----------------"
 
            ;Cálculo de distancias de seguridad
+
            let vb [velocity] of bCar
-           let vbT vb * time-scale
+           ;set vb decimal-format vb 3
+           ;let vbT decimal-format (vb * time-scale) 3
            let xb [xcor] of bCar * (3 / 4)
+           ;set xb decimal-format xb 3
            let accelB [accel] of bCar
-           let accelBT accelB * time-scale
+           ;set accelB decimal-format accelB 3
+           ;let accelBT decimal-format (accelB * time-scale) 3
            let sa (calculate-security-distance-formula-v velocity)
+           ;set sa decimal-format sa 3
            let sb (calculate-security-distance-formula-v vb)
+           ;set sb decimal-format sb 3
 
            ;Cálculo de puntos de seguridad (operación)
            let pSa xb - sa
@@ -328,16 +99,28 @@ to start-driving-def-2
            let dxaSa pSa - xmCar
            let dxaSb pSb - xmCar
 
-           ;if dxaSa > 0 [
-             set aOpt calculate-perfect-accel-to-sa velocity desaccel-max xmCar xb sizeCar
-           ;]
+;           if decimal-format xb 1 = decimal-format xmCar 1[
+;              set xb xmCar
+;           ]
+;           if velocity = 0[
+;              print who
+;              print "---------"
+;        ]
+             ;set aOpt calculate-perfect-accel-to-sa velocity desaccel-max xmCar xb sizeCar
+             ;set aOpt calculate-perfect-accel-to-sa-simple velocity desaccel-max (decimal-format xmCar 3) (decimal-format xb 3) (0)
+             set aOpt calculate-perfect-accel-to-sa-simple (velocity) (desaccel-max) xmCar xb (0.947739);0.947739
+             set aOptima aOpt
 
-;           print cwho
-;           print (word "aOpt " aOpt)
-;           print (word "velocityT " velocityT)
-;           print (word "accelDesMaxT " accelDesMaxT)
-;           print (word "xmCar " xmCar)
-;           print (word "xb " xb)
+         ;print  xb - (velocity ^ 2 )/ (2 * friction-co * desaccel-max)
+;        print who
+;        print (word "velocity " velocity)
+;        print (word "xmCar " xmCar)
+;        print ( word "xb " xb)
+;        print (word "aopt " aOpt)
+;        print (word "aOpt3 " aOpt3)
+
+
+
 
          ][
          set aOpt accel-max
@@ -353,7 +136,9 @@ to start-driving-def-2
 end
 
 ; TO DO : Arreglar parada coche de la función de aceleración óptima
-;
+
+;; Método para mover los vehículos:
+
 to move-forward [ aOpt ]
   let aOptT aOpt
   ;print aOptT
@@ -367,7 +152,7 @@ to move-forward [ aOpt ]
     ]
   ]
 
-  let nextVelocity velocity + (aFinal * time-scale)
+  let nextVelocity (velocity + (aFinal * time-scale))
 
   ifelse nextVelocity > max-velocity[
     set nextVelocity max-velocity
@@ -384,64 +169,7 @@ to move-forward [ aOpt ]
 end
 
 
-to-report calculate-perfect-accel-to-sa [velocityT accelDesMaxT xmCar xb offset]
-  let a 1
-  let b 2 * velocityT + 2 * accelDesMaxT * friction-co
-  let c 2 * (xmCar + velocityT - xb + offset) * accelDesMaxT * friction-co
-  set c c + velocityT ^ 2
-
-
-  let inc sqrt ((b ^ 2) - (4 * a * c))
-  let resP ((- b) + inc)/ (2 * a)
-  ;let resN ((- b) - inc)/ (2 * a)
-  report resP
-end
-
-to calculate-perfect-accel-to-sb [velocityT vbT accelDesMaxT xmCar xb accelB]
-  let a (- (accelB ^ 2)) - (2 * vbT * accelB) - (vbT ^ 2) - ((xmCar + velocityT - xb) * (2 * accelDesMaxT * friction-co))
-  set a a / (2 * accelDesMaxT * friction-co)
-  print a
-end
-
-to calculate-security-distance  ;Anticuado
-  let acum 1
-  ;;Estudiar el valor para evitar error division para accel = 0
-  let seconds 0
-  ifelse velocity < 1 [
-    set acum 2
-  ][
-    if accel >= 1[
-      set seconds ceiling (velocity / abs(accel))
-    ]
-    let i 0
-    repeat seconds[
-      set acum acum + velocity - i * abs(accel)
-      set i i + 1
-    ]
-  ]
-  set security-distance acum - (random 3)
-end
-
-
-to calculate-security-distance-formula ; Anticuado
-  ;d=v^2/(2Ua)
-  ifelse accel <= 0[
-    set security-distance 3
-  ][
-    set security-distance (velocity ^ 2)/ (2 * friction-co * desaccel-max)
-  ]
-end
-
-
-to calculate-security-distance-formula-vb[vb] ;;Anticuado
-  ;d=v^2/(2Ua)
-  ifelse accel <= 0[
-    set security-distance 3
-  ][
-    set security-distance (vb ^ 2 )/ (2 * friction-co * desaccel-max)
-  ]
-  set security-distance security-distance
-end
+;; Método para el cálculo de distancia de seguridad:
 
 to-report calculate-security-distance-formula-v [v]
   ;d=v^2/(2Ua)
@@ -449,55 +177,87 @@ to-report calculate-security-distance-formula-v [v]
 end
 
 
-to-report calculate-accel-to-sx [v dsx]
-  ;a=v^2/(2Ud)
-  let accel-to-sx (((v ^ 2) - (velocity ^ 2)) / (2 * friction-co * dsx))
-  report accel-to-sx
-end
-
-to-report calculate-velocity-opt [d]
-  ;VOpt=sqrt(2*Da*d*U)  FINAL DEL MUNDO DISTANCIA NEGATIVA
-  let vOpt 2 * desaccel-max * d * friction-co
-  set vOpt sqrt vOpt
-  report vOpt
-end
-
-to-report calculate-accel-opt [vOpt]
-  report vOpt - velocity
-
+;; Método para el cálculo de la aceleración hasta punto de interés.
+to-report calculate-perfect-accel-to-sa-simple [velocityT desMax xmCar xb offset]
+  let a xb - xmCar - velocityT - offset
+  set a a - ((velocityT ^ 2)/ (2 * desMax * friction-co))
+;  print who
+;   print (word "velocityT " velocityT)
+;   print (word "xmCar " xmCar)
+;   print ( word "xb " xb)
+;  print (word "offset " offset)
+;  print (word "pSa  " (xb - ((velocityT ^ 2)/ (2 * desMax * friction-co))))
+  report a
 end
 
 
-to color-patches[xCar dCar color1 color2]
-  ask patches with[pycor = 0 AND (pxcor >= xCar AND pxcor <= xCar + dCar)][
-    ;print xCar + dCar + sizeCar
-   set pcolor color1
+
+
+to-report calculate-perfect-accel-to-sa [velocityT accelDesMaxT xmCar xb offset]
+  let a 1
+  let b 2 * velocityT + 2 * accelDesMaxT * friction-co
+  let c 2 * (xmCar + velocityT - xb + offset) * accelDesMaxT * friction-co ;analizar cuando sumar offset
+  set c c + velocityT ^ 2
+
+  if (b ^ 2) - (4 * a * c) < 0 [
+    print who
+    print (word "b " b)
+    print (word "c " c)
+    print (word "offset " offset)
+    print (word "velocityT " velocityT)
+    print (word "accelDesMaxT " accelDesMaxT)
+    print (word "xmCar " xmCar)
+    print (word "xb " xb)
+    print ("----------")
   ]
-  ask patches with[pycor = 0 AND (pxcor < xCar OR pxcor >= xCar + dCar)][
-   set pcolor color2
-  ]
-end
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-to accelerate;[car-closest]
-  let next-velocity velocity + accel
-  ifelse next-velocity < max-velocity[
-    set velocity next-velocity
-  ][
-    set velocity max-velocity
-  ]
+
+  let inc sqrt ((b ^ 2) - (4 * a * c))
+  let resP ((- b) + inc)/ (2 * a)
+  ;let resN ((- b) - inc)/ (2 * a)
+
+  report resP
 end
 
-to brake[car-closest]
-  let car-closest-velocity item 0 [velocity] of car-closest
-  let next-velocity velocity - accel
-  (ifelse next-velocity < 0[
-    set velocity 0
+to-report calculate-perfect-accel-to-sa-v2 [velocityT xmCar xb offset]
+  let a 2 * friction-co
+  let b 2 * (xmCar + velocityT - xb) * friction-co
+  let c velocityT ^ 2
+  set c c + velocityT ^ 2
+
+  if (b ^ 2) - (4 * a * c) < 0 [
+    print who
+    print (word "b " b)
+    print (word "c " c)
+    print (word "offset " offset)
+    print (word "velocityT " velocityT)
+    print (word "xmCar " xmCar)
+    print (word "xb " xb)
+    print ("----------")
   ]
-  next-velocity > car-closest-velocity[
-   set velocity car-closest-velocity
-  ])
+
+  let inc sqrt ((b ^ 2) - (4 * a * c))
+  let resP ((- b) + inc)/ (2 * a)
+  let resN ((- b) - inc)/ (2 * a)
+
+  report resP
 end
 
+
+
+to calculate-perfect-accel-to-sb [velocityT vbT accelDesMaxT xmCar xb accelB]
+  let a (- (accelB ^ 2)) - (2 * vbT * accelB) - (vbT ^ 2) - ((xmCar + velocityT - xb) * (2 * accelDesMaxT * friction-co))
+  set a a / (2 * accelDesMaxT * friction-co)
+  print a
+end
+
+to-report decimal-format [ number n-decimal]
+  set number number * (10 ^ n-decimal)
+  set number floor number;ceiling number
+  set number number / (10 ^ n-decimal)
+  report number
+end
+
+;; Métodos para pruebas:
 
 to stop-car-n [n]
   ask cars with [who = n]
@@ -517,24 +277,24 @@ to resume-car-n [n]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-4
-152
-1358
-435
+0
+155
+4812
+328
 -1
 -1
-6.7
+4.0
 1
 10
 1
 1
 1
 0
+0
+0
 1
-1
-1
--100
-100
+-600
+600
 -20
 20
 0
@@ -544,28 +304,11 @@ ticks
 60.0
 
 BUTTON
-5
-100
-103
-134
-NIL
-start-driving
-T
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-BUTTON
-5
 10
-161
-44
-NIL
+30
+166
+63
+Setup
 setup-cars nCarsSetup\n\n
 NIL
 1
@@ -579,24 +322,24 @@ NIL
 
 SLIDER
 5
-50
+75
 177
-83
+108
 nCarsSetup
 nCarsSetup
 0
 100
-5.0
+2.0
 1
 1
 NIL
 HORIZONTAL
 
 BUTTON
-1170
-25
-1247
-58
+1215
+30
+1292
+63
 stop-car
 ask cars with [who = idcar][\nset velocity 0\nset accel 0\nset stopped true\n]
 NIL
@@ -610,25 +353,25 @@ NIL
 1
 
 SLIDER
-1175
-65
-1347
-98
+1115
+70
+1287
+103
 idcar
 idcar
 0
 nCarsSetup - 1
-4.0
+0.0
 1
 1
 NIL
 HORIZONTAL
 
 BUTTON
-1265
-25
-1357
-58
+1110
+30
+1202
+63
 resume-car
 ask cars with [ who = idcar] [\nset accel 2\nset stopped false\n]
 NIL
@@ -642,10 +385,10 @@ NIL
 1
 
 SLIDER
-560
-10
-732
-43
+235
+30
+407
+63
 friction-co
 friction-co
 0.01
@@ -657,45 +400,11 @@ NIL
 HORIZONTAL
 
 BUTTON
-125
-102
-252
-135
-NIL
-start-driving-new
-T
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-BUTTON
-1206
-108
-1325
-142
-NIL
-start-driving-def
-T
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-BUTTON
-1050
-110
-1182
-143
-NIL
+475
+30
+607
+63
+Start
 start-driving-def-2
 T
 1
@@ -705,6 +414,46 @@ NIL
 NIL
 NIL
 NIL
+1
+
+TEXTBOX
+30
+10
+180
+28
+-- Setup Simulation --\n
+11
+0.0
+1
+
+TEXTBOX
+520
+10
+670
+28
+-- Start --\n
+11
+0.0
+1
+
+TEXTBOX
+270
+10
+420
+28
+-- Config Simulation --\n
+11
+0.0
+1
+
+TEXTBOX
+1160
+10
+1310
+28
+-- Testing TCD --
+11
+0.0
 1
 
 @#$#@#$#@
